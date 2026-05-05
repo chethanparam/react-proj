@@ -1,139 +1,101 @@
-import { useState } from 'react'
-import { InputBox } from './components'
-import useCurrencyInfo from './hooks/useCurrencyinfo'
+import { useState, useEffect } from 'react'
 import './App.css'
 
-const PARTICLES = [
-  { sym: '$',  left: '7%',  dur: '18s', delay: '0s'  },
-  { sym: '₹',  left: '17%', dur: '22s', delay: '3s'  },
-  { sym: '€',  left: '29%', dur: '16s', delay: '1s'  },
-  { sym: '£',  left: '44%', dur: '20s', delay: '5s'  },
-  { sym: '¥',  left: '57%', dur: '25s', delay: '2s'  },
-  { sym: '₿',  left: '69%', dur: '17s', delay: '7s'  },
-  { sym: '₩',  left: '81%', dur: '21s', delay: '4s'  },
-  { sym: '₣',  left: '91%', dur: '19s', delay: '9s'  },
-  { sym: '$',  left: '23%', dur: '23s', delay: '11s' },
-  { sym: '₹',  left: '63%', dur: '15s', delay: '6s'  },
-]
-
 function App() {
-  const [amount, setAmount]           = useState('')
-  const [from, setFrom]               = useState('usd')
-  const [to, setTo]                   = useState('inr')
-  const [convertedAmnt, setConverted] = useState('')
-  const [converted, setConverted2]    = useState(false)
+  const [usd, setUsd]         = useState('')
+  const [inr, setInr]         = useState('')
+  const [rate, setRate]       = useState(null)
+  const [flipped, setFlipped] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [time, setTime]       = useState('')
 
-  const currencyInfo = useCurrencyInfo(from)
-  const options      = Object.keys(currencyInfo)
+  useEffect(() => {
+    fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json')
+      .then(r => r.json())
+      .then(data => {
+        setRate(data.usd.inr)
+        setLoading(false)
+        const now = new Date()
+        setTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const handleUsd = (val) => {
+    setUsd(val)
+    if (val === '') { setInr(''); return }
+    if (rate) setInr((parseFloat(val) * rate).toFixed(2))
+  }
+
+  const handleInr = (val) => {
+    setInr(val)
+    if (val === '') { setUsd(''); return }
+    if (rate) setUsd((parseFloat(val) / rate).toFixed(4))
+  }
 
   const swap = () => {
-    setFrom(to)
-    setTo(from)
-    setAmount(convertedAmnt)
-    setConverted(amount)
-    setConverted2(false)
+    setFlipped(f => !f)
+    const u = usd, i = inr
+    setUsd(i ? (parseFloat(i) / rate).toFixed(4) : '')
+    setInr(u ? (parseFloat(u) * rate).toFixed(2) : '')
   }
-
-  const convert = () => {
-    if (!amount || !currencyInfo[to]) return
-    const result = (parseFloat(amount) * currencyInfo[to]).toFixed(4)
-    setConverted(result)
-    setConverted2(true)
-  }
-
-  const rate = currencyInfo[to]
-    ? (1 * currencyInfo[to]).toFixed(4)
-    : null
 
   return (
-    <>
-      {/* Backgrounds */}
-      <div className="app-bg" aria-hidden="true" />
-      <div className="app-grid" aria-hidden="true" />
+    <div className="page">
+      <div className="blob b1" /><div className="blob b2" /><div className="blob b3" />
 
-      {/* Floating currency symbols */}
-      <div className="particles" aria-hidden="true">
-        {PARTICLES.map((p, i) => (
-          <span
-            key={i}
-            className="particle"
-            style={{ left: p.left, '--dur': p.dur, '--delay': p.delay }}
-          >
-            {p.sym}
-          </span>
-        ))}
-      </div>
+      <main className="wrap">
 
-      {/* Main */}
-      <div className="app-shell">
-
-        {/* Header */}
-        <header className="app-header">
-          <h1 className="app-title">FX Convert</h1>
-          <p className="app-subtitle">Real-Time Exchange Rates</p>
+        <header className="hdr">
+          <div className="flags"><span>🇺🇸</span><span className="dot-sep">·</span><span>🇮🇳</span></div>
+          <h1 className="ttl">Currency<br /><em>Converter</em></h1>
+          <div className="badge">
+            <span className="pulse" />
+            {loading ? 'Fetching rate…' : `Live · Updated ${time}`}
+          </div>
         </header>
 
-        {/* Card */}
         <div className="card">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              convert()
-            }}
-          >
-            {/* From */}
-            <InputBox
-              label="From"
-              amount={amount}
-              currencyOptions={options}
-              selectCurrency={from}
-              onAmountChange={(val) => { setAmount(val); setConverted2(false) }}
-              onCurrencyChange={(cur) => { setFrom(cur); setConverted2(false) }}
-            />
 
-            {/* Swap */}
-            <div className="swap-row">
-              <div className="swap-line" />
-              <button type="button" className="swap-btn" onClick={swap}>
-                <span className="swap-icon">⇅</span>
-                Swap
-              </button>
+          <div className={`field ${flipped ? 'sec' : 'pri'}`}>
+            <div className="ftop">
+              <span className="ctag"><b>$</b> USD</span>
+              <span className="cname">US Dollar</span>
             </div>
+            <input className="inp" type="number" placeholder="0.00"
+              value={usd} onChange={e => handleUsd(e.target.value)} />
+          </div>
 
-            {/* To */}
-            <InputBox
-              label="To"
-              amount={convertedAmnt}
-              currencyOptions={options}
-              selectCurrency={to}
-              onCurrencyChange={(cur) => { setTo(cur); setConverted2(false) }}
-              amountDisable
-            />
+          <button className={`swapbtn ${flipped ? 'flip' : ''}`} onClick={swap}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+              strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+              <path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+            </svg>
+          </button>
 
-            {/* Rate hint */}
-            <p className="rate-hint">
-              {rate && amount
-                ? <>1 {from.toUpperCase()} = <span>{rate} {to.toUpperCase()}</span></>
-                : converted
-                  ? <>&nbsp;</>
-                  : 'Enter an amount to see the rate'
-              }
-            </p>
+          <div className={`field ${flipped ? 'pri' : 'sec'}`}>
+            <div className="ftop">
+              <span className="ctag"><b>₹</b> INR</span>
+              <span className="cname">Indian Rupee</span>
+            </div>
+            <input className="inp" type="number" placeholder="0.00"
+              value={inr} onChange={e => handleInr(e.target.value)} />
+          </div>
 
-            {/* Convert button */}
-            <button type="submit" className="convert-btn">
-              Convert {from.toUpperCase()} → {to.toUpperCase()}
-            </button>
-          </form>
+          <div className="ratestrip">
+            {rate
+              ? <><span>1 USD</span><span className="eq">=</span>
+                  <span className="rv">₹ {rate.toFixed(4)}</span>
+                  <span className="sep">·</span>
+                  <span>1 INR = $ {(1/rate).toFixed(6)}</span></>
+              : <span>Loading rate…</span>}
+          </div>
+
         </div>
 
-        {/* Footer */}
-        <footer className="app-footer">
-          Rates via fawazahmed0 / currency-api &nbsp;·&nbsp; Updates daily
-        </footer>
-
-      </div>
-    </>
+        <footer className="ftr">Rates via fawazahmed0 / currency-api</footer>
+      </main>
+    </div>
   )
 }
 
