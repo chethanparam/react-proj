@@ -1,2 +1,2 @@
-import InputBox from "./Input";  // ✅ capital I
+import InputBox from "./Input";  // ✅ capital 
 export { InputBox }
